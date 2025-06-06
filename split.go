@@ -26,7 +26,7 @@ func SplitTwo[T1, T2 any](in iter.Seq2[T1, T2]) iter.Seq[T2] {
 
 // Split splits an `iter.Seq2` into two separate `iter.Seq`s, one for each element of the pair.
 // Callers *MUST* ensure that the two returned sequences are consumed in parallel to avoid deadlocks.
-func Split[T1, T2 any](in iter.Seq2[T1, T2]) (iter.Seq[T1], iter.Seq[T2]) {
+func Split[T1, T2 any](in iter.Seq2[T1, T2]) (ParSeq[T1], ParSeq[T2]) {
 	oneDone := make(chan struct{})
 	twoDone := make(chan struct{})
 	oneData := make(chan T1)

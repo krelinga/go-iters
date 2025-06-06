@@ -4,10 +4,10 @@ import "iter"
 
 type Sink[T any] struct {
 	Pred PredFn[T]
-	Out  *iter.Seq[T]
+	Out  *ParSeq[T]
 }
 
-func NewSink[T any](pred PredFn[T], out *iter.Seq[T]) Sink[T] {
+func NewSink[T any](pred PredFn[T], out *ParSeq[T]) Sink[T] {
 	return Sink[T]{Pred: pred, Out: out}
 }
 
@@ -17,9 +17,9 @@ func NewSink[T any](pred PredFn[T], out *iter.Seq[T]) Sink[T] {
 // If no predicate matches, the element is yielded to the returned (default) sequence.
 // If any consumer abandons an iterator before it is completed then any elements that would have been written to that sink will be lost.
 // Callers *MUST* ensure that all output iterators (including the default) are consumed in parallel to avoid deadlocks.
-func Partition[T any](seq iter.Seq[T], sinks ...Sink[T]) iter.Seq[T] {
+func Partition[T any](seq iter.Seq[T], sinks ...Sink[T]) ParSeq[T] {
 	if len(sinks) == 0 {
-		return seq // No sinks, return the original sequence
+		return ParSeq[T](seq) // No sinks, return the original sequence
 	}
 
 	// One output channel & done channel for each sink, and the same for the default output.
