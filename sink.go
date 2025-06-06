@@ -1,5 +1,7 @@
 package iters
 
+import "iter"
+
 // Sink abstracts away the details of of values are written.
 type Sink[T any] interface {
 	// Close the sink, signaling that no more values will be sent.
@@ -56,4 +58,20 @@ func (s toChan[T]) Write(val T) bool {
 	case <-s.done:
 		return false
 	}
+}
+
+// ToSink writes values from the given sequence to the provided Sink.
+func ToSink[T any](seq iter.Seq[T], sink Sink[T]) {
+	if sink == nil {
+		// If the sink is nil, we cannot write to it, so we just stop the sequence.
+		Stop(seq)
+		return
+	}
+	for val := range seq {
+		if !sink.Write(val) {
+			sink.Close() // Close the sink if it cannot accept more values
+			return
+		}
+	}
+	sink.Close() // Close the sink after all values have been written
 }
