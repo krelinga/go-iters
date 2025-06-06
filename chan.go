@@ -15,3 +15,27 @@ func FromChan[T any](data <-chan T, done chan<- struct{}) iter.Seq[T] {
 		}
 	}
 }
+
+// PullFromChan creates a pull-based iterator from a channel.
+// This may be more-efficient than `FromChan` combined with `iter.Pull`.
+// `done` is closed the first time the `stop` function is called.
+// `next` pulls a value off the `data` channel and returns it as long as the `data` channel is open and `stop` has not been called.
+// See the comments on `iter.Pull` for more details on the semantics of `next` and `stop`, PullFromChan has the same behavior.
+func PullFromChan[T any](data <-chan T, done chan<- struct{}) (next func() (T, bool), stop func()) {
+	var stopCalled bool
+	next = func() (T, bool) {
+		if stopCalled {
+			var zero T
+			return zero, false // If stop was called, return zero value and false
+		}
+		val, ok := <-data
+		return val, ok
+	}
+	stop = func() {
+		if !stopCalled {
+			stopCalled = true
+			close(done) // Close the done channel to signal that the iterator is done
+		}
+	}
+	return
+}
