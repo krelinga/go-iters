@@ -11,3 +11,5 @@ func Map[T, R any](seq iter.Seq[T], fn func(T) R) iter.Seq[R] {
 		}
 	}
 }
+
+// TODO: add Map2 and MapBreak/MapBreak2.
