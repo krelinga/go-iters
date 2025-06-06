@@ -21,55 +21,22 @@ func JoinTrim[T1, T2 any](one iter.Seq[T1], two iter.Seq[T2]) iter.Seq2[T1, T2] 
 }
 
 func joinImpl[T1, T2 any](one iter.Seq[T1], two iter.Seq[T2], stopWhen func(bool, bool) bool) iter.Seq2[T1, T2] {
-	return func(yield func(T1, T2) bool) {
-		oneNext, oneDone := iter.Pull(iter.Seq[T1](one))
+	return func(yield func (T1, T2) bool) {
+		oneGet, oneDone := iter.Pull(one)
+		twoGet, twoDone := iter.Pull(two)
 		defer oneDone()
-		twoNext, twoDone := iter.Pull(iter.Seq[T2](two))
 		defer twoDone()
 
-		done := make(chan struct{})
-		defer close(done)
-
-		oneData := make(chan T1)
-		go func() {
-			defer close(oneData)
-			for {
-				val, ok := oneNext()
-				if !ok {
-					return // No more elements in the first sequence
-				}
-				select {
-				case oneData <- val:
-				case <-done:
-					return // Stop if the main routine has finished
-				}
-			}
-		}()
-
-		twoData := make(chan T2)
-		go func() {
-			defer close(twoData)
-			for {
-				val, ok := twoNext()
-				if !ok {
-					return // No more elements in the second sequence
-				}
-				select {
-				case twoData <- val:
-				case <-done:
-					return // Stop if the main routine has finished
-				}
-			}
-		}()
-
 		for {
-			oneVal, oneOk := <-oneData
-			twoVal, twoOk := <-twoData
+			oneVal, oneOk := oneGet()
+			twoVal, twoOk := twoGet()
+
 			if stopWhen(oneOk, twoOk) {
-				return // Stop condition met
+				break // Stop when the condition is met
 			}
+
 			if !yield(oneVal, twoVal) {
-				return // Yield function returned false, stop iteration
+				return // Stop yielding if the consumer stops
 			}
 		}
 	}
