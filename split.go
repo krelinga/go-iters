@@ -26,7 +26,8 @@ func SplitTwo[T1, T2 any](in iter.Seq2[T1, T2]) iter.Seq[T2] {
 
 // Split splits a sequence of pairs into two separate Sinks: one for the first element and one for the second element.
 func Split[T1, T2 any](in iter.Seq2[T1, T2], oneSink Sink[T1], twoSink Sink[T2]) {
-	var oneDone, twoDone bool
+	oneDone := oneSink == nil
+	twoDone := twoSink == nil
 	for one, two := range in {
 		if oneDone && twoDone {
 			break // Both sinks are closed, stop processing

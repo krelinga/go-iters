@@ -10,6 +10,12 @@ func Tee[T any](seq iter.Seq[T], sinks ...Sink[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		closedCount := 0
 		closed := make([]bool, len(sinks))
+		for i := range closed {
+			if sinks[i] == nil {
+				closed[i] = true // If the sink is nil, mark it as closed
+				closedCount++
+			}
+		}
 		var retClosed bool
 
 		tryWrite := func(sink Sink[T], val T, closed *bool) {

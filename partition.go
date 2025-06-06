@@ -22,8 +22,14 @@ func Partition[T any](seq iter.Seq[T], dests ...PartDest[T]) iter.Seq[T] {
 
 	return func(yield func(T) bool) {
 		destDone := make([]bool, len(dests))
-		var defDone bool
 		var doneCount int
+		for i, dest := range dests {
+			if dest.Sink == nil {
+				destDone[i] = true // If the sink is nil, mark it as done
+				doneCount++
+			}
+		}
+		var defDone bool
 
 		tryWrite := func(sink Sink[T], val T, done *bool) {
 			if *done {
