@@ -45,3 +45,27 @@ func Wait(waitFns ...WaitFn) {
 		waitFn()
 	}
 }
+
+func InPar[T any](seq iter.Seq[T]) ParSeq[T] {
+	done := make(chan struct{})
+	data := make(chan T)
+	go func() {
+		defer close(data)
+		for val := range seq {
+			select {
+			case data <- val:
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	return func(yield func(T) bool) {
+		defer close(done)
+		for val := range data {
+			if !yield(val) {
+				return
+			}
+		}
+	}
+}
