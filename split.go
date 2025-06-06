@@ -24,62 +24,25 @@ func SplitTwo[T1, T2 any](in iter.Seq2[T1, T2]) iter.Seq[T2] {
 	}
 }
 
-// Split splits an `iter.Seq2` into two separate `iter.Seq`s, one for each element of the pair.
-// Callers *MUST* ensure that the two returned sequences are consumed in parallel to avoid deadlocks.
-func Split[T1, T2 any](in iter.Seq2[T1, T2]) (ParSeq[T1], ParSeq[T2]) {
-	oneDone := make(chan struct{})
-	twoDone := make(chan struct{})
-	oneData := make(chan T1)
-	twoData := make(chan T2)
-
-	go func() {
-		var oneIsDone, twoIsDone bool
-		for one, two := range in {
-			if !oneIsDone {
-				select {
-				case oneData <- one:
-				case <-oneDone:
-					oneIsDone = true
-					close(oneData)
-				}
-			}
-			if !twoIsDone {
-				select {
-				case twoData <- two:
-				case <-twoDone:
-					twoIsDone = true
-					close(twoData)
-				}
-			}
-			if oneIsDone && twoIsDone {
-				break
-			}
+func Split[T1, T2 any](in iter.Seq2[T1, T2], oneSink Sink[T1], twoSink Sink[T2]) {
+	var oneDone, twoDone bool
+	for one, two := range in {
+		if oneDone && twoDone {
+			break // Both sinks are closed, stop processing
 		}
-		if !oneIsDone {
-			close(oneData)
+		if !oneDone && !oneSink.Write(one) {
+			oneDone = true  // Mark the first sink as closed if it cannot accept more values
+			oneSink.Close() // Close the sink to signal no more values will be sent
 		}
-		if !twoIsDone {
-			close(twoData)
-		}
-	}()
-
-	out1 := func(yield func(T1) bool) {
-		defer close(oneDone)
-		for one := range oneData {
-			if !yield(one) {
-				return
-			}
+		if !twoDone && !twoSink.Write(two) {
+			twoDone = true  // Mark the second sink as closed if it cannot accept more values
+			twoSink.Close() // Close the sink to signal no more values will be sent
 		}
 	}
-
-	out2 := func(yield func(T2) bool) {
-		defer close(twoDone)
-		for two := range twoData {
-			if !yield(two) {
-				return
-			}
-		}
+	if !oneDone {
+		oneSink.Close() // Close the first sink if it was not closed during processing
 	}
-
-	return out1, out2
+	if !twoDone {
+		twoSink.Close() // Close the second sink if it was not closed during processing
+	}
 }
